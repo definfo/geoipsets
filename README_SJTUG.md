@@ -53,3 +53,13 @@ You may need to enable the relevant network *wait* service to avoid the script r
 systemctl start systemd-networkd-wait-online.service && systemctl enable systemd-networkd-wait-online.service
 ```
 
+Resume from previous state
+---
+
+```sh
+/usr/local/bin/geoipsets --config-file /etc/geoipsets.conf
+ipset restore --file /var/local/geoipsets/dbip/ipset/ipv4/CN.ipv4
+ipset restore --file /var/local/geoipsets/dbip/ipset/ipv6/CN.ipv6
+ipset save --file /etc/ipset/ipset.conf
+```
+
