@@ -55,7 +55,7 @@ def get_config(cli_args=None):
                         action="extend",
                         nargs="+",
                         type=str.lower,
-                        choices={utils.Firewall.NF_TABLES.value, utils.Firewall.IP_TABLES.value},
+                        choices={utils.Firewall.NF_TABLES.value, utils.Firewall.IP_TABLES.value, utils.Firewall.FIREWALLD.value},
                         help="firewall(s) to build sets for (default: {0})".format(utils.Firewall.NF_TABLES.value))
     parser.add_argument("-a", "--address-family",
                         action="extend",

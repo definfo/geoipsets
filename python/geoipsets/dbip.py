@@ -51,7 +51,8 @@ class DbIpProvider(utils.AbstractProvider):
                         inet_suffix = 'ipv' + str(ip_version)
                         filename_key = cc + '.' + inet_suffix
                         ip_end = ip_address(r['ip_end'])
-                        if self.ip_tables:  # https://github.com/chr0mag/geoipsets/issues/25
+                        if self.ip_tables or self.firewalld:  # https://github.com/chr0mag/geoipsets/issues/25
+                            # Both iptables and firewalld need CIDR subnets
                             subnets = [nets.with_prefixlen for nets in summarize_address_range(ip_start, ip_end)]
                             if filename_key in country_subnets:  # append
                                 country_subnets[filename_key].extend(subnets)
@@ -74,6 +75,7 @@ class DbIpProvider(utils.AbstractProvider):
         nftset_dir = self.base_dir / 'dbip/nftset' / utils.AddressFamily.IPV4.value
         ip6set_dir = self.base_dir / 'dbip/ipset' / utils.AddressFamily.IPV6.value
         nft6set_dir = self.base_dir / 'dbip/nftset' / utils.AddressFamily.IPV6.value
+        firewalld_dir = self.base_dir / 'dbip/firewalld'
 
         # remove old sets if they exist
         if self.ip_tables:
@@ -98,6 +100,11 @@ class DbIpProvider(utils.AbstractProvider):
                     shutil.rmtree(nft6set_dir)
                 nft6set_dir.mkdir(parents=True)
 
+        if self.firewalld:
+            if firewalld_dir.is_dir():
+                shutil.rmtree(firewalld_dir)
+            firewalld_dir.mkdir(parents=True)
+
         for set_name, subnets in dict_of_lists.items():
             set_name_parts = set_name.split('.')
             country_code = set_name_parts[0]
@@ -119,6 +126,15 @@ class DbIpProvider(utils.AbstractProvider):
                 nftset_file = open(nftset_path, 'w')
                 nftset_file.write("define " + set_name + " = {\n")
 
+            if self.firewalld:
+                firewalld_path = self.base_dir / 'dbip/firewalld' / (set_name + '.xml')
+                firewalld_file = open(firewalld_path, 'w')
+                firewalld_file.write('<?xml version="1.0" encoding="utf-8"?>\n')
+                firewalld_file.write('<ipset type="hash:net">\n')
+                firewalld_file.write('  <short>{0}</short>\n'.format(set_name))
+                firewalld_file.write('  <description>Geolocation ipset for {0} ({1})</description>\n'.format(
+                    country_code.upper(), ip_version))
+
             # write ranges to file(s)
             for subnet in subnets:
                 if self.ip_tables:
@@ -127,12 +143,19 @@ class DbIpProvider(utils.AbstractProvider):
                 if self.nf_tables:
                     nftset_file.write(subnet + ",\n")
 
+                if self.firewalld:
+                    firewalld_file.write('  <entry>{0}</entry>\n'.format(subnet))
+
             if self.ip_tables:
                 ipset_file.close()
 
             if self.nf_tables:
                 nftset_file.write("}\n")
                 nftset_file.close()
+
+            if self.firewalld:
+                firewalld_file.write('</ipset>\n')
+                firewalld_file.close()
 
     def download(self):
         """

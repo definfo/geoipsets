@@ -8,6 +8,7 @@ from pathlib import Path
 class Firewall(Enum):
     IP_TABLES = 'iptables'
     NF_TABLES = 'nftables'
+    FIREWALLD = 'firewalld'
 
 
 class AddressFamily(Enum):
@@ -23,6 +24,7 @@ class AbstractProvider(ABC):
         self.ipv6 = AddressFamily.IPV6.value in address_family
         self.nf_tables = Firewall.NF_TABLES.value in firewall
         self.ip_tables = Firewall.IP_TABLES.value in firewall
+        self.firewalld = Firewall.FIREWALLD.value in firewall
         self.checksum = checksum
         self.countries = countries
         self.base_dir = Path(output_dir) / 'geoipsets'

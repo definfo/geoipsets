@@ -13,6 +13,8 @@ uv --directory=python/ run setup.py install
 Usage
 ---
 
+### iptables
+
 ```sh
 mkdir -p /etc/iptables
 
@@ -25,6 +27,23 @@ iptables-save > /etc/iptables/iptables.rules
 ip6tables --insert INPUT -p tcp --dport 873 -m set --match-set CN.ipv6 src -j DROP
 ip6tables --insert INPUT -p udp --dport 873 -m set --match-set CN.ipv6 src -j DROP
 ip6tables-save > /etc/iptables/ip6tables.rules
+```
+
+### firewalld
+
+```sh
+# Load ipsets from generated XML files
+firewall-cmd --permanent --new-ipset-from-file=/var/local/geoipsets/dbip/firewalld/CN.ipv4.xml
+firewall-cmd --permanent --new-ipset-from-file=/var/local/geoipsets/dbip/firewalld/CN.ipv6.xml
+
+# Create a rich rule to drop connections to port 873 from CN
+firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source ipset="CN.ipv4" port port="873" protocol="tcp" drop'
+firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source ipset="CN.ipv4" port port="873" protocol="udp" drop'
+firewall-cmd --permanent --add-rich-rule='rule family="ipv6" source ipset="CN.ipv6" port port="873" protocol="tcp" drop'
+firewall-cmd --permanent --add-rich-rule='rule family="ipv6" source ipset="CN.ipv6" port port="873" protocol="udp" drop'
+
+# Reload firewalld to apply changes
+firewall-cmd --reload
 ```
 
 Updates
@@ -53,8 +72,9 @@ You may need to enable the relevant network *wait* service to avoid the script r
 systemctl start systemd-networkd-wait-online.service && systemctl enable systemd-networkd-wait-online.service
 ```
 
-Resume from previous state
----
+## Resume from previous state
+
+### iptables
 
 ```sh
 /usr/local/bin/geoipsets --config-file /etc/geoipsets.conf
@@ -63,3 +83,11 @@ ipset restore --file /var/local/geoipsets/dbip/ipset/ipv6/CN.ipv6
 ipset save --file /etc/ipset/ipset.conf
 ```
 
+### firewalld
+
+```sh
+/usr/local/bin/geoipsets --config-file /etc/geoipsets.conf
+firewall-cmd --permanent --new-ipset-from-file=/var/local/geoipsets/dbip/firewalld/CN.ipv4.xml
+firewall-cmd --permanent --new-ipset-from-file=/var/local/geoipsets/dbip/firewalld/CN.ipv6.xml
+firewall-cmd --reload
+```

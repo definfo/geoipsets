@@ -16,17 +16,17 @@ Typically, you would want to select only one firewall type along with a short li
 The utility will attempt to read the configuration file at */etc/geoipsets.conf* but the location can be overidden using the *--config PATH_TO_FILE* command line option.
 
 ```shell
-usage: geoipsets [-h] [-v] [-p {maxmind,dbip} [{maxmind,dbip} ...]] [-f {nftables,iptables} [{nftables,iptables} ...]] [-a {ipv4,ipv6} [{ipv4,ipv6} ...]]
+usage: geoipsets [-h] [-v] [-p {maxmind,dbip} [{maxmind,dbip} ...]] [-f {nftables,iptables,firewalld} [{nftables,iptables,firewalld} ...]] [-a {ipv4,ipv6} [{ipv4,ipv6} ...]]
                  [-l COUNTRIES] [-o OUTPUT_DIR] [-c CONFIG_FILE] [--checksum] [--no-checksum]
 
-Utility to build country specific IP sets for ipset/iptables and nftables. Command line arguments take precedence over those in the configuration file.
+Utility to build country specific IP sets for ipset/iptables, nftables and firewalld. Command line arguments take precedence over those in the configuration file.
 
 options:
   -h, --help            show this help message and exit
   -v, --version         show program's version number and exit
   -p {maxmind,dbip} [{maxmind,dbip} ...], --provider {maxmind,dbip} [{maxmind,dbip} ...]
                         dataset provider(s) (default: dbip)
-  -f {nftables,iptables} [{nftables,iptables} ...], --firewall {nftables,iptables} [{nftables,iptables} ...]
+  -f {nftables,iptables,firewalld} [{nftables,iptables,firewalld} ...], --firewall {nftables,iptables,firewalld} [{nftables,iptables,firewalld} ...]
                         firewall(s) to build sets for (default: nftables)
   -a {ipv4,ipv6} [{ipv4,ipv6} ...], --address-family {ipv4,ipv6} [{ipv4,ipv6} ...]
                         IP protocol(s) to build sets for (default: ipv4)
