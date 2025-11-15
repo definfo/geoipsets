@@ -11,7 +11,7 @@ HERE = pathlib.Path(__file__).parent
 README = (HERE / "README.md").read_text()
 
 # The text of the VERSION file
-VERSION = (HERE / 'geoipsets/VERSION').read_text()
+VERSION = (HERE / "geoipsets/VERSION").read_text()
 
 # This call to setup() does all the work
 setup(

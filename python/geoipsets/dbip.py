@@ -16,9 +16,16 @@ from . import utils
 
 
 class DbIpProvider(utils.AbstractProvider):
-    """ DBIP IP range set provider. """
+    """DBIP IP range set provider."""
 
-    def __init__(self, firewall: set, address_family: set, checksum: bool, countries: set, output_dir: str):
+    def __init__(
+        self,
+        firewall: set,
+        address_family: set,
+        checksum: bool,
+        countries: set,
+        output_dir: str,
+    ):
         super().__init__(firewall, address_family, checksum, countries, output_dir)
 
     def generate(self):
@@ -33,36 +40,50 @@ class DbIpProvider(utils.AbstractProvider):
         # filename is CC.address_family -- eg. CA.ipv4
         country_subnets = dict()
 
-        with gzip.GzipFile(gzip_ref, 'rb') as csv_file_bytes:
+        with gzip.GzipFile(gzip_ref, "rb") as csv_file_bytes:
             # with gzip.GzipFile('/tmp/tmphq4qgkfp.csv.gz', 'rb') as csv_file_bytes:
 
             # validate checksum of the CSV file (not the GZIP file)
             if self.checksum:
                 self.check_checksum(csv_file_bytes)
 
-            rows = DictReader(TextIOWrapper(csv_file_bytes), fieldnames=("ip_start", "ip_end", "country"))
+            rows = DictReader(
+                TextIOWrapper(csv_file_bytes),
+                fieldnames=("ip_start", "ip_end", "country"),
+            )
             for r in rows:
-                cc = r['country']
+                cc = r["country"]
                 # configparser forces keys to lower case by default
-                if cc != 'ZZ' and (self.countries == 'all' or cc.lower() in self.countries):
-                    ip_start = ip_address(r['ip_start'])
+                if cc != "ZZ" and (
+                    self.countries == "all" or cc.lower() in self.countries
+                ):
+                    ip_start = ip_address(r["ip_start"])
                     ip_version = ip_start.version
-                    if (ip_version == 4 and self.ipv4) or (ip_version == 6 and self.ipv6):
-                        inet_suffix = 'ipv' + str(ip_version)
-                        filename_key = cc + '.' + inet_suffix
-                        ip_end = ip_address(r['ip_end'])
-                        if self.ip_tables or self.firewalld:  # https://github.com/chr0mag/geoipsets/issues/25
+                    if (ip_version == 4 and self.ipv4) or (
+                        ip_version == 6 and self.ipv6
+                    ):
+                        inet_suffix = "ipv" + str(ip_version)
+                        filename_key = cc + "." + inet_suffix
+                        ip_end = ip_address(r["ip_end"])
+                        if (
+                            self.ip_tables or self.firewalld
+                        ):  # https://github.com/chr0mag/geoipsets/issues/25
                             # Both iptables and firewalld need CIDR subnets
-                            subnets = [nets.with_prefixlen for nets in summarize_address_range(ip_start, ip_end)]
+                            subnets = [
+                                nets.with_prefixlen
+                                for nets in summarize_address_range(ip_start, ip_end)
+                            ]
                             if filename_key in country_subnets:  # append
                                 country_subnets[filename_key].extend(subnets)
                             else:  # create
                                 country_subnets[filename_key] = subnets
                         else:  # conversion not required for nftables
-                            if ip_start == ip_end:  # nftables disallows intervals with the same start & end
-                                ip_range = r['ip_start']
+                            if (
+                                ip_start == ip_end
+                            ):  # nftables disallows intervals with the same start & end
+                                ip_range = r["ip_start"]
                             else:
-                                ip_range = r['ip_start'] + '-' + r['ip_end']
+                                ip_range = r["ip_start"] + "-" + r["ip_end"]
                             if filename_key in country_subnets:  # append
                                 country_subnets[filename_key].append(ip_range)
                             else:  # create
@@ -71,11 +92,11 @@ class DbIpProvider(utils.AbstractProvider):
         self.build_sets(country_subnets)
 
     def build_sets(self, dict_of_lists):
-        ipset_dir = self.base_dir / 'dbip/ipset' / utils.AddressFamily.IPV4.value
-        nftset_dir = self.base_dir / 'dbip/nftset' / utils.AddressFamily.IPV4.value
-        ip6set_dir = self.base_dir / 'dbip/ipset' / utils.AddressFamily.IPV6.value
-        nft6set_dir = self.base_dir / 'dbip/nftset' / utils.AddressFamily.IPV6.value
-        firewalld_dir = self.base_dir / 'dbip/firewalld'
+        ipset_dir = self.base_dir / "dbip/ipset" / utils.AddressFamily.IPV4.value
+        nftset_dir = self.base_dir / "dbip/nftset" / utils.AddressFamily.IPV4.value
+        ip6set_dir = self.base_dir / "dbip/ipset" / utils.AddressFamily.IPV6.value
+        nft6set_dir = self.base_dir / "dbip/nftset" / utils.AddressFamily.IPV6.value
+        firewalld_dir = self.base_dir / "dbip/firewalld"
 
         # remove old sets if they exist
         if self.ip_tables:
@@ -106,45 +127,63 @@ class DbIpProvider(utils.AbstractProvider):
             firewalld_dir.mkdir(parents=True)
 
         for set_name, subnets in dict_of_lists.items():
-            set_name_parts = set_name.split('.')
+            set_name_parts = set_name.split(".")
             country_code = set_name_parts[0]
             ip_version = set_name_parts[1]
             if ip_version == utils.AddressFamily.IPV4.value:
-                inet_family = 'family inet'
+                inet_family = "family inet"
             else:  # AddressFamily.IPV6
-                inet_family = 'family inet6'
+                inet_family = "family inet6"
 
             # write file headers
             if self.ip_tables:
-                ipset_path = self.base_dir / 'dbip/ipset' / ip_version / set_name
-                ipset_file = open(ipset_path, 'w')
-                maxelem = max(131072, 1 if len(subnets) == 0 else (1 << (len(subnets) - 1).bit_length()))
-                ipset_file.write("create {0} hash:net {1} maxelem {2} comment\n".format(set_name, inet_family, maxelem))
+                ipset_path = self.base_dir / "dbip/ipset" / ip_version / set_name
+                ipset_file = open(ipset_path, "w")
+                maxelem = max(
+                    131072,
+                    1 if len(subnets) == 0 else (1 << (len(subnets) - 1).bit_length()),
+                )
+                ipset_file.write(
+                    "create {0} hash:net {1} maxelem {2} comment\n".format(
+                        set_name, inet_family, maxelem
+                    )
+                )
 
             if self.nf_tables:
-                nftset_path = self.base_dir / 'dbip/nftset' / ip_version / set_name
-                nftset_file = open(nftset_path, 'w')
+                nftset_path = self.base_dir / "dbip/nftset" / ip_version / set_name
+                nftset_file = open(nftset_path, "w")
                 nftset_file.write("define " + set_name + " = {\n")
 
             if self.firewalld:
-                firewalld_path = self.base_dir / 'dbip/firewalld' / (set_name + '.xml')
-                firewalld_file = open(firewalld_path, 'w')
+                firewalld_path = self.base_dir / "dbip/firewalld" / (set_name + ".xml")
+                firewalld_file = open(firewalld_path, "w")
                 firewalld_file.write('<?xml version="1.0" encoding="utf-8"?>\n')
                 firewalld_file.write('<ipset type="hash:net">\n')
-                firewalld_file.write('  <short>{0}</short>\n'.format(set_name))
-                firewalld_file.write('  <description>Geolocation ipset for {0} ({1})</description>\n'.format(
-                    country_code.upper(), ip_version))
+                firewalld_file.write("  <short>{0}</short>\n".format(set_name))
+                firewalld_file.write(
+                    "  <description>Geolocation ipset for {0} ({1})</description>\n".format(
+                        country_code.upper(), ip_version
+                    )
+                )
 
             # write ranges to file(s)
             for subnet in subnets:
                 if self.ip_tables:
-                    ipset_file.write("add " + set_name + " " + subnet + " comment " + country_code + "\n")
+                    ipset_file.write(
+                        "add "
+                        + set_name
+                        + " "
+                        + subnet
+                        + " comment "
+                        + country_code
+                        + "\n"
+                    )
 
                 if self.nf_tables:
                     nftset_file.write(subnet + ",\n")
 
                 if self.firewalld:
-                    firewalld_file.write('  <entry>{0}</entry>\n'.format(subnet))
+                    firewalld_file.write("  <entry>{0}</entry>\n".format(subnet))
 
             if self.ip_tables:
                 ipset_file.close()
@@ -154,7 +193,7 @@ class DbIpProvider(utils.AbstractProvider):
                 nftset_file.close()
 
             if self.firewalld:
-                firewalld_file.write('</ipset>\n')
+                firewalld_file.write("</ipset>\n")
                 firewalld_file.close()
 
     def download(self):
@@ -162,8 +201,12 @@ class DbIpProvider(utils.AbstractProvider):
         eg. https://download.db-ip.com/free/dbip-country-lite-2020-10.csv.gz
         filename: dbip-country-lite-YYYY-MM.csv.gz
         """
-        file_suffix = '.csv.gz'
-        url = 'https://download.db-ip.com/free/dbip-country-lite-' + datetime.utcnow().strftime('%Y-%m') + file_suffix
+        file_suffix = ".csv.gz"
+        url = (
+            "https://download.db-ip.com/free/dbip-country-lite-"
+            + datetime.utcnow().strftime("%Y-%m")
+            + file_suffix
+        )
 
         # download latest GZIP file
         http_response = requests.get(url)
@@ -173,7 +216,7 @@ class DbIpProvider(utils.AbstractProvider):
         return gzip_file.name
 
     def download_checksum(self):
-        webpage = 'https://db-ip.com/db/download/ip-to-country-lite'
+        webpage = "https://db-ip.com/db/download/ip-to-country-lite"
         # download sha1sum
         webpage_http_response = requests.get(webpage)
 
@@ -198,8 +241,8 @@ class DbIpProvider(utils.AbstractProvider):
         soup = BeautifulSoup(webpage_http_response.content, "html.parser")
 
         # we are using the CSV format, not MMDB
-        csv_card_body = soup.find('dd', string="CSV")
-        csv_sha1sum_tag = csv_card_body.find_next_siblings('dt', string="SHA1SUM")
+        csv_card_body = soup.find("dd", string="CSV")
+        csv_sha1sum_tag = csv_card_body.find_next_siblings("dt", string="SHA1SUM")
 
         return csv_sha1sum_tag[0].find_next_sibling().string
 
@@ -219,6 +262,8 @@ class DbIpProvider(utils.AbstractProvider):
 
         # compare downloaded sha1 hash with computed version
         if expected_sha1sum != computed_sha1sum:
-            raise SystemExit("ERROR: Computed CSV file digest '{0}' does not match expected value '{1}'".format(
-                computed_sha1sum, expected_sha1sum
-            ))
+            raise SystemExit(
+                "ERROR: Computed CSV file digest '{0}' does not match expected value '{1}'".format(
+                    computed_sha1sum, expected_sha1sum
+                )
+            )
