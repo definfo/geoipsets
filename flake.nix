@@ -19,5 +19,15 @@
       };
       default = self.packages.${system}.geoipsets;
     };
+      
+    devShells.${system}.default = pkgs.mkShell {
+      strictDeps = true;
+      nativeBuildInputs = with pkgs; [
+        python3
+        uv
+        ruff
+        basedpyright
+      ];
+    };
   };
 }
